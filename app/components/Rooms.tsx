@@ -34,6 +34,7 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const fetchRooms = () => {
     fetch("http://localhost:3001/api/rooms", {
@@ -41,19 +42,18 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
       credentials: "include",
     })
       .then((response) => {
-        if(!response.ok){
+        if (!response.ok) {
           throw new Error("Failed to fetch rooms");
         }
-      return response.json()})
-      .then((rooms) => setRooms(rooms))
-      .catch(()=>{
-        setStatusMessage("Failed to fetch rooms")
+        return response.json();
       })
+      .then((rooms) => setRooms(rooms))
+      .catch(() => {
+        setStatusMessage("Failed to fetch rooms");
+      });
   };
 
   const createRooms = (e: React.FormEvent<HTMLFormElement>) => {
-
-    
     e.preventDefault();
     const trimmedRoomName = roomName.trim();
 
@@ -61,7 +61,7 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
       setStatusMessage("Room name is required");
       return;
     }
-        setIsCreatingRoom(true)
+    setIsCreatingRoom(true);
 
     fetch("http://localhost:3001/api/rooms", {
       method: "POST",
@@ -70,55 +70,58 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
       body: JSON.stringify({ name: trimmedRoomName }),
     })
       .then((response) => {
-        if(!response.ok){
-          throw new Error("failed to  create rooms")
-        }return response.json()
+        if (!response.ok) {
+          throw new Error("failed to  create rooms");
+        }
+        return response.json();
       })
-      
+
       .then((data) => {
         if (data.error) {
           setStatusMessage(data.error);
-          setIsCreatingRoom(false)
+          setIsCreatingRoom(false);
           return;
         }
 
         setStatusMessage(`Created room ${data.name}`);
         setRoomName("");
-        setIsCreatingRoom(false)
+        setIsCreatingRoom(false);
         fetchRooms();
-      }).catch(()=>{
-        setStatusMessage("Failed to create room")
-        setIsCreatingRoom(false)
       })
-    
+      .catch(() => {
+        setStatusMessage("Failed to create room");
+        setIsCreatingRoom(false);
+      });
   };
 
   const fetchMessages = (roomId: number) => {
+    setLoading(true);
 
     fetch(`http://localhost:3001/api/rooms/${roomId}/messages`, {
       method: "GET",
       credentials: "include",
     })
-      .then((response) =>{
-        if(!response.ok){
-          throw new Error ("Failed to fetch messages")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch messages");
         }
-          return response.json()
-        })
-        
+        return response.json();
+      })
+
       .then((data) => {
         if (data.error) {
           setStatusMessage(data.error);
-         
+          setLoading(false);
           return;
         }
 
         setMessages(data);
-    
-      }).catch(()=>{
-        setStatusMessage("Failed to fetch messages");
-   
+        setLoading(false);
       })
+      .catch(() => {
+        setStatusMessage("Failed to fetch messages");
+        setLoading(false);
+      });
   };
 
   const sendMessages = (roomId: number) => {
@@ -126,7 +129,7 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
       setStatusMessage("Message is required");
       return;
     }
-        setIsSendingMessage(true)
+    setIsSendingMessage(true);
     fetch(`http://localhost:3001/api/rooms/${roomId}/messages`, {
       method: "POST",
       credentials: "include",
@@ -135,28 +138,28 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
       body: JSON.stringify({ text: messageText.trim() }),
     })
       .then((response) => {
-        if(!response.ok){
-          throw new Error("Failed to send message")
+        if (!response.ok) {
+          throw new Error("Failed to send message");
         }
-          return response.json()})
-  
-    
+        return response.json();
+      })
+
       .then((data) => {
         if (data.error) {
           setStatusMessage(data.error);
-           setIsSendingMessage(false)
+          setIsSendingMessage(false);
 
           return;
         }
         setMessageText("");
-           setIsSendingMessage(false)
+        setIsSendingMessage(false);
         fetchMessages(roomId);
-      }).catch(()=>{
-        setStatusMessage("Failed to send message")
-        setIsSendingMessage(false)
       })
+      .catch(() => {
+        setStatusMessage("Failed to send message");
+        setIsSendingMessage(false);
+      });
   };
-  
 
   const openRoom = (room: Room) => {
     setSelectedRoom(room);
@@ -194,19 +197,22 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
           onChange={(e) => setRoomName(e.target.value)}
           placeholder="Room name"
         />
-        {isCreatingRoom?(<button
-          className="h-12 rounded-md bg-[#0f766e] px-5 text-sm font-bold text-white shadow-sm shadow-[#0f766e]/25 transition hover:bg-[#115e59]"
-          type="submit"
-          disabled
-        >
-          Creating
-        </button>):(<button
-          className="h-12 rounded-md bg-[#0f766e] px-5 text-sm font-bold text-white shadow-sm shadow-[#0f766e]/25 transition hover:bg-[#115e59]"
-          type="submit"
-        >
-          Create
-        </button>)}
-        
+        {isCreatingRoom ? (
+          <button
+            className="h-12 rounded-md bg-[#0f766e] px-5 text-sm font-bold text-white shadow-sm shadow-[#0f766e]/25 transition hover:bg-[#115e59]"
+            type="submit"
+            disabled
+          >
+            Creating
+          </button>
+        ) : (
+          <button
+            className="h-12 rounded-md bg-[#0f766e] px-5 text-sm font-bold text-white shadow-sm shadow-[#0f766e]/25 transition hover:bg-[#115e59]"
+            type="submit"
+          >
+            Create
+          </button>
+        )}
       </form>
 
       {statusMessage && (
@@ -259,80 +265,88 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
           </p>
         )}
       </div>
-      {selectedRoom && (
-        <div className="mt-5 rounded-lg border border-[#d8dde8] bg-[#f8fafc] p-4">
-          <div className="flex flex-col gap-3 border-b border-[#e2e8f0] pb-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#0f766e]">
-                Active room
-              </p>
-              <h3 className="mt-1 text-xl font-bold text-[#111827]">
-                {selectedRoom.name}
-              </h3>
+      {selectedRoom &&
+        (loading ?  (
+          "Loading messages"
+        ): (
+          <div className="mt-5 rounded-lg border border-[#d8dde8] bg-[#f8fafc] p-4">
+            <div className="flex flex-col gap-3 border-b border-[#e2e8f0] pb-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#0f766e]">
+                  Active room
+                </p>
+                <h3 className="mt-1 text-xl font-bold text-[#111827]">
+                  {selectedRoom.name}
+                </h3>
+              </div>
+              <span className="rounded-md bg-white px-3 py-2 text-xs font-bold text-[#64748b]">
+                {messages.length} messages
+              </span>
             </div>
-            <span className="rounded-md bg-white px-3 py-2 text-xs font-bold text-[#64748b]">
-              {messages.length} messages
-            </span>
-          </div>
 
-          <div className="mt-4 max-h-72 overflow-y-auto pr-1">
-            {messages.length > 0 ? (
-              <ul className="grid gap-3">
-                {messages.map((item) => (
-                  <li
-                    className="rounded-lg border border-[#e2e8f0] bg-white px-4 py-3 shadow-sm"
-                    key={item.id}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-bold text-[#111827]">
-                        {item.username}
-                      </span>
-                      <span className="text-xs font-semibold text-[#94a3b8]">
-                        #{item.id}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-[#334155]">
-                      {item.text}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="rounded-md border border-dashed border-[#cbd5e1] bg-white px-3 py-8 text-center text-sm text-[#64748b]">
-                No messages in this room yet.
-              </p>
-            )}
-          </div>
+            <div className="mt-4 max-h-72 overflow-y-auto pr-1">
+              {messages.length > 0 ? (
+                <ul className="grid gap-3">
+                  {messages.map((item) => (
+                    <li
+                      className="rounded-lg border border-[#e2e8f0] bg-white px-4 py-3 shadow-sm"
+                      key={item.id}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-bold text-[#111827]">
+                          {item.username}
+                        </span>
+                        <span className="text-xs font-semibold text-[#94a3b8]">
+                          #{item.id}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-[#334155]">
+                        {item.text}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="rounded-md border border-dashed border-[#cbd5e1] bg-white px-3 py-8 text-center text-sm text-[#64748b]">
+                  No messages in this room yet.
+                </p>
+              )}
+            </div>
 
-          <form
-            className="mt-4 flex flex-col gap-3 border-t border-[#e2e8f0] pt-4 sm:flex-row"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (selectedRoom) {
-                sendMessages(selectedRoom.id);
-              }
-            }}
-          >
-            <input
-              className="h-12 min-w-0 flex-1 rounded-md border border-[#cbd5e1] bg-white px-3 text-[#111827] outline-none transition focus:border-[#0f766e] focus:ring-2 focus:ring-[#99f6e4]"
-              onChange={(e) => setMessageText(e.target.value)}
-              placeholder={`Message ${selectedRoom.name}`}
-              value={messageText}
-            />
-            {isSendingMessage?(<button
-              className="h-12 rounded-md bg-[#173b35] px-5 text-sm font-bold text-white shadow-sm shadow-[#173b35]/25 transition hover:bg-[#0f766e]"
-              type="submit"
-              disabled
+            <form
+              className="mt-4 flex flex-col gap-3 border-t border-[#e2e8f0] pt-4 sm:flex-row"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (selectedRoom) {
+                  sendMessages(selectedRoom.id);
+                }
+              }}
             >
-              Sending...
-            </button>):(<button
-              className="h-12 rounded-md bg-[#173b35] px-5 text-sm font-bold text-white shadow-sm shadow-[#173b35]/25 transition hover:bg-[#0f766e]"
-              type="submit"
-            >Send</button>)}
-            
-          </form>
-        </div>
-      )}
+              <input
+                className="h-12 min-w-0 flex-1 rounded-md border border-[#cbd5e1] bg-white px-3 text-[#111827] outline-none transition focus:border-[#0f766e] focus:ring-2 focus:ring-[#99f6e4]"
+                onChange={(e) => setMessageText(e.target.value)}
+                placeholder={`Message ${selectedRoom.name}`}
+                value={messageText}
+              />
+              {isSendingMessage ? (
+                <button
+                  className="h-12 rounded-md bg-[#173b35] px-5 text-sm font-bold text-white shadow-sm shadow-[#173b35]/25 transition hover:bg-[#0f766e]"
+                  type="submit"
+                  disabled
+                >
+                  Sending...
+                </button>
+              ) : (
+                <button
+                  className="h-12 rounded-md bg-[#173b35] px-5 text-sm font-bold text-white shadow-sm shadow-[#173b35]/25 transition hover:bg-[#0f766e]"
+                  type="submit"
+                >
+                  Send
+                </button>
+              )}
+            </form>
+          </div>
+        ))}
     </div>
   );
 };
