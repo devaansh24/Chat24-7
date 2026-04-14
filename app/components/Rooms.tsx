@@ -25,6 +25,8 @@ type Message = {
   created_at: string;
 };
 
+const API_BASE_URL="http://localhost:3001"
+
 export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [roomName, setRoomName] = useState("");
@@ -37,7 +39,8 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
   const [loading, setLoading] = useState(false);
 
   const fetchRooms = () => {
-    fetch("http://localhost:3001/api/rooms", {
+    setStatusMessage("")
+    fetch(`${API_BASE_URL}/api/rooms`, {
       method: "GET",
       credentials: "include",
     })
@@ -54,6 +57,7 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
   };
 
   const createRooms = (e: React.FormEvent<HTMLFormElement>) => {
+    setStatusMessage("")
     e.preventDefault();
     const trimmedRoomName = roomName.trim();
 
@@ -63,7 +67,7 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
     }
     setIsCreatingRoom(true);
 
-    fetch("http://localhost:3001/api/rooms", {
+    fetch(`${API_BASE_URL}/api/rooms`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -95,9 +99,10 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
   };
 
   const fetchMessages = (roomId: number) => {
+    setStatusMessage("")
     setLoading(true);
 
-    fetch(`http://localhost:3001/api/rooms/${roomId}/messages`, {
+    fetch(`${API_BASE_URL}/api/rooms/${roomId}/messages`, {
       method: "GET",
       credentials: "include",
     })
@@ -125,12 +130,13 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
   };
 
   const sendMessages = (roomId: number) => {
+    setStatusMessage("")
     if (!messageText.trim()) {
       setStatusMessage("Message is required");
       return;
     }
     setIsSendingMessage(true);
-    fetch(`http://localhost:3001/api/rooms/${roomId}/messages`, {
+    fetch(`${API_BASE_URL}/api/rooms/${roomId}/messages`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -169,6 +175,10 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
   useEffect(() => {
     fetchRooms();
   }, []);
+
+  const formatDate=(value:string)=>{
+    return new Date(value).toLocaleString()
+  }
 
   return (
     <div className="rounded-lg border border-[#cfe0da] bg-white p-5 shadow-md shadow-[#64748b]/10">
@@ -278,6 +288,7 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
                 <h3 className="mt-1 text-xl font-bold text-[#111827]">
                   {selectedRoom.name}
                 </h3>
+                <span className="text-xs text-[#64748b]">{formatDate(selectedRoom.created_at)}</span>
               </div>
               <span className="rounded-md bg-white px-3 py-2 text-xs font-bold text-[#64748b]">
                 {messages.length} messages
@@ -303,6 +314,7 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
                       <p className="mt-2 text-sm leading-6 text-[#334155]">
                         {item.text}
                       </p>
+                      <span className="text-xs text-[94a3b8]">{formatDate(item.created_at)}</span>
                     </li>
                   ))}
                 </ul>
