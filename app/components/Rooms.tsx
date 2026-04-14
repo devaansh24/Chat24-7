@@ -28,9 +28,11 @@ type Message = {
 export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [roomName, setRoomName] = useState("");
-  const [message, setMessage] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
-  const[messageText,setMessageText]=useState("")
+  const [messageText, setMessageText] = useState("");
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
 
   const fetchRooms = () => {
@@ -38,18 +40,28 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
       method: "GET",
       credentials: "include",
     })
-      .then((response) => response.json())
-      .then((rooms) => setRooms(rooms));
+      .then((response) => {
+        if(!response.ok){
+          throw new Error("Failed to fetch rooms");
+        }
+      return response.json()})
+      .then((rooms) => setRooms(rooms))
+      .catch(()=>{
+        setStatusMessage("Failed to fetch rooms")
+      })
   };
 
   const createRooms = (e: React.FormEvent<HTMLFormElement>) => {
+
+    
     e.preventDefault();
     const trimmedRoomName = roomName.trim();
 
     if (!trimmedRoomName) {
-      setMessage("Room name is required");
+      setStatusMessage("Room name is required");
       return;
     }
+        setIsCreatingRoom(true)
 
     fetch("http://localhost:3001/api/rooms", {
       method: "POST",
@@ -57,60 +69,99 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: trimmedRoomName }),
     })
-      .then((response) => response.json())
+      .then((response) => {
+        if(!response.ok){
+          throw new Error("failed to  create rooms")
+        }return response.json()
+      })
+      
       .then((data) => {
         if (data.error) {
-          setMessage(data.error);
+          setStatusMessage(data.error);
+          setIsCreatingRoom(false)
           return;
         }
 
-        setMessage(`Created room ${data.name}`);
+        setStatusMessage(`Created room ${data.name}`);
         setRoomName("");
+        setIsCreatingRoom(false)
         fetchRooms();
-      });
+      }).catch(()=>{
+        setStatusMessage("Failed to create room")
+        setIsCreatingRoom(false)
+      })
+    
   };
 
-
   const fetchMessages = (roomId: number) => {
+
     fetch(`http://localhost:3001/api/rooms/${roomId}/messages`, {
       method: "GET",
       credentials: "include",
     })
-      .then((response) => response.json())
+      .then((response) =>{
+        if(!response.ok){
+          throw new Error ("Failed to fetch messages")
+        }
+          return response.json()
+        })
+        
       .then((data) => {
         if (data.error) {
-          setMessage(data.error);
+          setStatusMessage(data.error);
+         
           return;
         }
 
         setMessages(data);
-        console.log(data, "messages");
-      });
+    
+      }).catch(()=>{
+        setStatusMessage("Failed to fetch messages");
+   
+      })
   };
 
-  const sendMessages=(roomId:number)=>{
-
-    if(!messageText.trim()){
-        setMessage("Message is required")
-        return;
+  const sendMessages = (roomId: number) => {
+    if (!messageText.trim()) {
+      setStatusMessage("Message is required");
+      return;
     }
-        fetch(`http://localhost:3001/api/rooms/${roomId}/messages`,{
-            method:'POST',
-            credentials:'include',
-            headers:{"Content-Type":"application/json"},
-          
-            body:JSON.stringify({text:messageText.trim()})
-        }).then((response)=>response.json()).then((data)=>{
-            if(data.error){
-                setMessage(data.error);
-                
-                return;
-            }
-            setMessageText('')
-            fetchMessages(roomId)
+        setIsSendingMessage(true)
+    fetch(`http://localhost:3001/api/rooms/${roomId}/messages`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
 
-        })
-  }
+      body: JSON.stringify({ text: messageText.trim() }),
+    })
+      .then((response) => {
+        if(!response.ok){
+          throw new Error("Failed to send message")
+        }
+          return response.json()})
+  
+    
+      .then((data) => {
+        if (data.error) {
+          setStatusMessage(data.error);
+           setIsSendingMessage(false)
+
+          return;
+        }
+        setMessageText("");
+           setIsSendingMessage(false)
+        fetchMessages(roomId);
+      }).catch(()=>{
+        setStatusMessage("Failed to send message")
+        setIsSendingMessage(false)
+      })
+  };
+  
+
+  const openRoom = (room: Room) => {
+    setSelectedRoom(room);
+    fetchMessages(room.id);
+  };
 
   useEffect(() => {
     fetchRooms();
@@ -133,24 +184,34 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
         </p>
       </div>
 
-      <form className="mt-5 flex flex-col gap-3 sm:flex-row" onSubmit={createRooms}>
+      <form
+        className="mt-5 flex flex-col gap-3 sm:flex-row"
+        onSubmit={createRooms}
+      >
         <input
           className="h-12 min-w-0 flex-1 rounded-md border border-[#cbd5e1] bg-[#f8fafc] px-3 text-[#111827] outline-none transition focus:border-[#0f766e] focus:bg-white focus:ring-2 focus:ring-[#99f6e4]"
           value={roomName}
           onChange={(e) => setRoomName(e.target.value)}
           placeholder="Room name"
         />
-        <button
+        {isCreatingRoom?(<button
+          className="h-12 rounded-md bg-[#0f766e] px-5 text-sm font-bold text-white shadow-sm shadow-[#0f766e]/25 transition hover:bg-[#115e59]"
+          type="submit"
+          disabled
+        >
+          Creating
+        </button>):(<button
           className="h-12 rounded-md bg-[#0f766e] px-5 text-sm font-bold text-white shadow-sm shadow-[#0f766e]/25 transition hover:bg-[#115e59]"
           type="submit"
         >
           Create
-        </button>
+        </button>)}
+        
       </form>
 
-      {message && (
+      {statusMessage && (
         <p className="mt-4 rounded-md border border-[#bbf7d0] bg-[#ecfdf5] px-3 py-2 text-sm font-medium text-[#065f46]">
-          {message}
+          {statusMessage}
         </p>
       )}
 
@@ -166,32 +227,30 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
           <ul className="mt-3 grid gap-2">
             {rooms.map((room) => (
               <li
-                className="flex items-center justify-between gap-4 rounded-md border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 transition hover:border-[#0f766e] hover:bg-[#f1faf7]"
-                key={room.id}
+                className={
+                  selectedRoom?.id === room.id
+                    ? "flex items-center justify-between gap-4 rounded-md border border-[#0f766e] bg-[#ecfdf5] px-4 py-3 transition"
+                    : "flex items-center justify-between gap-4 rounded-md border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 transition hover:border-[#0f766e] hover:bg-[#f1f5f7]"
+                }
+                key={room?.id}
               >
                 <span className="flex min-w-0 items-center gap-3">
                   <span className="h-2.5 w-2.5 rounded-md bg-[#0f766e]" />
-                  <span className="truncate font-semibold text-[#111827]">{room.name}</span>
+                  <span className="truncate font-semibold text-[#111827]">
+                    {room.name}
+                  </span>
                 </span>
                 <span className="rounded-md bg-white px-2 py-1 text-xs font-semibold text-[#64748b]">
                   #{room.id}
                 </span>
-                    <button
-                      className="rounded-md border border-[#cbd5e1] bg-white px-3 py-2 text-xs font-bold text-[#173b35] transition hover:border-[#0f766e] hover:bg-[#f1faf7]"
-                      onClick={() => setSelectedRoom(room)}
-                      type="button"
-                    >
-                      Select
-                    </button>
-                    <button
-                      className="rounded-md bg-[#173b35] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#0f766e]"
-                      onClick={() => fetchMessages(room.id)}
-                      type="button"
-                    >
-                      Get Messages
-                    </button>
+                <button
+                  className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-[#0f766e] border border-[#b7e4db] transition hover:bg-[#f0fdfa]"
+                  onClick={() => openRoom(room)}
+                  type="button"
+                >
+                  Open
+                </button>
               </li>
-           
             ))}
           </ul>
         ) : (
@@ -244,24 +303,36 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
               </p>
             )}
           </div>
-          <div className="mt-4 flex flex-col gap-3 border-t border-[#e2e8f0] pt-4 sm:flex-row">
+
+          <form
+            className="mt-4 flex flex-col gap-3 border-t border-[#e2e8f0] pt-4 sm:flex-row"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (selectedRoom) {
+                sendMessages(selectedRoom.id);
+              }
+            }}
+          >
             <input
               className="h-12 min-w-0 flex-1 rounded-md border border-[#cbd5e1] bg-white px-3 text-[#111827] outline-none transition focus:border-[#0f766e] focus:ring-2 focus:ring-[#99f6e4]"
               onChange={(e) => setMessageText(e.target.value)}
               placeholder={`Message ${selectedRoom.name}`}
               value={messageText}
             />
-            <button
+            {isSendingMessage?(<button
               className="h-12 rounded-md bg-[#173b35] px-5 text-sm font-bold text-white shadow-sm shadow-[#173b35]/25 transition hover:bg-[#0f766e]"
-              onClick={() => sendMessages(selectedRoom.id)}
-              type="button"
+              type="submit"
+              disabled
             >
-              Send Message
-            </button>
-          </div>
+              Sending...
+            </button>):(<button
+              className="h-12 rounded-md bg-[#173b35] px-5 text-sm font-bold text-white shadow-sm shadow-[#173b35]/25 transition hover:bg-[#0f766e]"
+              type="submit"
+            >Send</button>)}
+            
+          </form>
         </div>
       )}
-
     </div>
   );
 };
