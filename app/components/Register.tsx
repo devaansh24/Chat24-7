@@ -1,5 +1,12 @@
 import React, { useState } from "react";
 
+type RegisterResponse = {
+  username: string;
+  error?: string;
+};
+
+const API_BASE_URL = "http://localhost:3001";
+
 export const Register = () => {
   const [formValue, setFormValues] = useState({
     email: "",
@@ -8,8 +15,8 @@ export const Register = () => {
   });
   const [message, setMessage] = useState("");
 
-  const handleChange = (e: any) => {
-    const { name, value } = e.target;
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
 
     setFormValues((prev) => ({
       ...prev,
@@ -17,30 +24,34 @@ export const Register = () => {
     }));
   };
 
-  const handleSubmit = (e: any) => {
-    e.preventDefault();
-    const postData = {
-      email: formValue.email,
-      username: formValue.username,
-      password: formValue.password,
-    };
-    console.log(postData, "postdata");
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setMessage("");
 
-    fetch("http://localhost:3001/api/auth/register", {
-      credentials: "include",
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(postData),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.error) {
-          setMessage(data.error);
-          return;
-        }
-
-        setMessage(`Registered ${data.username}`);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+        credentials: "include",
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formValue),
       });
+
+      const data: RegisterResponse = await response.json();
+
+      if (!response.ok || data.error) {
+        setMessage(data.error || "Registration failed");
+        return;
+      }
+
+      setMessage(`Registered ${data.username}`);
+      setFormValues({
+        email: "",
+        username: "",
+        password: "",
+      });
+    } catch {
+      setMessage("Registration failed");
+    }
   };
 
   return (
@@ -58,6 +69,7 @@ export const Register = () => {
             Create a test user and store the auth cookie in the browser.
           </p>
         </div>
+
         <label className="flex flex-col gap-2 text-sm font-medium text-[#374151]">
           Email
           <input
@@ -68,6 +80,7 @@ export const Register = () => {
             onChange={handleChange}
           />
         </label>
+
         <label className="flex flex-col gap-2 text-sm font-medium text-[#374151]">
           Username
           <input
@@ -77,6 +90,7 @@ export const Register = () => {
             onChange={handleChange}
           />
         </label>
+
         <label className="flex flex-col gap-2 text-sm font-medium text-[#374151]">
           Password
           <input
@@ -87,12 +101,14 @@ export const Register = () => {
             onChange={handleChange}
           />
         </label>
+
         <button
           className="h-12 rounded-md bg-[#0f766e] px-4 text-sm font-bold text-white shadow-sm shadow-[#0f766e]/25 transition hover:bg-[#115e59]"
           type="submit"
         >
           Create account
         </button>
+
         {message && (
           <p className="rounded-md border border-[#bbf7d0] bg-[#ecfdf5] px-3 py-2 text-sm font-medium text-[#065f46]">
             {message}

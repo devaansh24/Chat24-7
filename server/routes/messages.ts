@@ -45,7 +45,7 @@ router.post("/:roomId/messages",requireAuth,(req:AuthRequest,res:Response)=>{
     })
 
 
-  }catch(err){
+  }catch{
     res.status(500).json({error:"Server Error"})
   }
 

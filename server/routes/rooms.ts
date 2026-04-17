@@ -4,6 +4,13 @@ import {AuthRequest,requireAuth} from "../middleware/auth"
 
 const router=Router();
 
+type RoomRow = {
+    id: number;
+    name: string;
+    create_by: number;
+    created_at: string;
+};
+
 //Get /api/rooms
 
 router.get("/",(_req:Request,res:Response)=>{
@@ -31,13 +38,20 @@ router.post("/",requireAuth,(req:AuthRequest,res:Response)=>{
         );
         const result=stmt.run(name,req.user?.id)
 
-        res.status(201).json({
-            id:result.lastInsertRowid,
-            name,
-            created_by:req.user?.id
-        });
-    }catch(err:any){
-        if(err.message?.includes("UNIQUE constraint failed")){
+        const room=db
+            .prepare("SELECT id, name, create_by, created_at FROM rooms WHERE id = ?")
+            .get(result.lastInsertRowid) as RoomRow | undefined;
+
+        if(!room){
+            res.status(500).json({error:"Failed to load created room"});
+            return;
+        }
+
+        res.status(201).json(room);
+    }catch(err: unknown){
+        const errorMessage = err instanceof Error ? err.message : "";
+
+        if(errorMessage.includes("UNIQUE constraint failed")){
             res.status(409).json({error:"Room name already exists"});
         }else{
             res.status(500).json({error:"Server Error"})

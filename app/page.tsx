@@ -4,6 +4,7 @@ import { Register } from "./components/Register";
 import { LoginForm } from "./components/Login";
 import { useState } from "react";
 import { ChatRooms } from "./components/Rooms";
+import Image from "next/image";
 
 type CurrentUser = {
   id: number;
@@ -18,10 +19,13 @@ export default function Home() {
     <main className="min-h-screen bg-[#eef2f1] px-4 py-6 text-[#171717] sm:px-6 lg:px-10">
       <section className="mx-auto grid min-h-[calc(100vh-3rem)] max-w-6xl gap-6 lg:grid-cols-[0.86fr_1.14fr]">
         <div className="relative min-h-80 overflow-hidden rounded-lg bg-[#173b35] shadow-xl shadow-[#173b35]/20 lg:min-h-full">
-          <img
+          <Image
             src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80"
             alt="Desk with an open laptop"
             className="h-full min-h-80 w-full object-cover opacity-80"
+            fill
+            priority
+            sizes="(min-width: 1024px) 50vw, 100vw"
           />
           <div className="absolute inset-0 bg-[#12312c]/45" />
           <div className="absolute left-5 top-5 rounded-md border border-white/25 bg-white/15 px-3 py-2 text-sm font-semibold text-white backdrop-blur">

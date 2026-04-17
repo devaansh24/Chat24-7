@@ -4,7 +4,12 @@ import db from "../db";
 import { AuthRequest,requireAuth, JWT_SECRET } from "../middleware/auth";
 import jwt from "jsonwebtoken";
 
-
+type UserRow = {
+    id: number;
+    email: string;
+    username: string;
+    password: string;
+};
 
 const router= Router();
 
@@ -53,8 +58,10 @@ router.post("/register", async(req:Request ,res:Response)=>{
 
         res.status(201).json({id:result.lastInsertRowid,email,username});
 
-    }catch(err:any){
-        if(err.message?.includes("UNIQUE constraint failed")){
+    }catch(err: unknown){
+        const errorMessage = err instanceof Error ? err.message : "";
+
+        if(errorMessage.includes("UNIQUE constraint failed")){
             res.status(409).json({error:"Email and username already taken"});
         }else{
             res.status(500).json({error:"Server error"})
@@ -80,7 +87,7 @@ router.post("/login",async(req:Request,res:Response)=>{
 
     //Look up the user by email
 
-    const user=db.prepare("SELECT * FROM users WHERE email = ?").get(email) as any;
+    const user=db.prepare("SELECT * FROM users WHERE email = ?").get(email) as UserRow | undefined;
 
 
     if(!user){
