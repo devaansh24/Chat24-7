@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Socket, io } from "socket.io-client";
 
 type CurrentUser = {
@@ -80,6 +80,7 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [loading, setLoading] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const newSocket = io("http://localhost:3001", {
@@ -94,6 +95,10 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
   }, []);
 
   useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  useEffect(() => {
     if (!socket || !selectedRoom) {
       return;
     }
@@ -105,7 +110,20 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
       return;
     }
     socket.on("receive_message", (messageData) => {
-      setMessages((prev) => [...prev, messageData]);
+      if (!isMessage(messageData)) {
+        return;
+      }
+
+      setMessages((prev) => {
+        const alreadyExists = prev.some(
+          (message) => message.id === messageData.id,
+        );
+
+        if (alreadyExists) {
+          return prev;
+        }
+        return [...prev, messageData];
+      });
     });
 
     return () => {
@@ -283,7 +301,7 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
       }
 
       setMessageText("");
-      setMessages((prev) => [...prev, data ]);
+      setMessages((prev) => [...prev, data]);
 
       if (socket) {
         socket.emit("send_message", {
@@ -431,29 +449,32 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
 
             <div className="mt-4 max-h-72 overflow-y-auto pr-1">
               {messages.length > 0 ? (
-                <ul className="grid gap-3">
-                  {messages.map((item) => (
-                    <li
-                      className="rounded-lg border border-[#e2e8f0] bg-white px-4 py-3 shadow-sm"
-                      key={item.id}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-bold text-[#111827]">
-                          {item.username}
+                <>
+                  <ul className="grid gap-3">
+                    {messages.map((item) => (
+                      <li
+                        className="rounded-lg border border-[#e2e8f0] bg-white px-4 py-3 shadow-sm"
+                        key={item.id}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-sm font-bold text-[#111827]">
+                            {item.username}
+                          </span>
+                          <span className="text-xs font-semibold text-[#94a3b8]">
+                            #{item.id}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-[#334155]">
+                          {item.text}
+                        </p>
+                        <span className="text-xs text-[#94a3b8]">
+                          {formatDate(item.created_at)}
                         </span>
-                        <span className="text-xs font-semibold text-[#94a3b8]">
-                          #{item.id}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm leading-6 text-[#334155]">
-                        {item.text}
-                      </p>
-                      <span className="text-xs text-[#94a3b8]">
-                        {formatDate(item.created_at)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                      </li>
+                    ))}
+                  </ul>
+                  <div ref={messagesEndRef} />
+                </>
               ) : (
                 <p className="rounded-md border border-dashed border-[#cbd5e1] bg-white px-3 py-8 text-center text-sm text-[#64748b]">
                   No messages in this room yet.
