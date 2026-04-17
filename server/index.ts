@@ -4,9 +4,21 @@ import cookieParser from "cookie-parser";
 import authRouter from "./routes/auth";
 import roomsRouter from "./routes/rooms"
 import messageRouter from "./routes/messages"
+import { createServer } from "http";
+import {Server} from "socket.io"
 
 const app = express();
+const httpServer=createServer(app)
+const io=new Server(httpServer,{
+cors:{
+  origin :"http://localhost:3000",
+  credentials:true
+},
+
+})
+
 const PORT = process.env.PORT || 3001;
+
 
 // Middleware
 app.use(cors({ origin: "http://localhost:3000", credentials: true }));
@@ -37,7 +49,28 @@ app.use("/api/auth", authRouter);
 app.use("/api/rooms",roomsRouter)
 app.use("/api/rooms",messageRouter)
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+io.on("connection",(socket)=>{
+  socket.on("join_room", (roomId)=>{
+    socket.join(`room_${roomId}`);
+    console.log(`Socket ${socket.id} joined room_${roomId}`)
+  })
+
+  socket.on("send_message",(messageData)=>{
+    const {roomId}=messageData;
+    socket.to(`room_${roomId}`).emit("receive_message",messageData)
+  })
+  console.log("User connected :",socket.id)
+
+  socket.on("disconnect",()=>{
+    console.log("user disconnected: " , socket.id);
+  })
+})
+
+
+
+httpServer.listen(PORT,()=>{
+  console.log(`Server running on http://localhost:${PORT}`)
+})
+
+
+

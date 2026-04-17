@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { Socket, io } from "socket.io-client";
 
 type CurrentUser = {
   id: number;
@@ -28,6 +29,19 @@ type Message = {
 
 type ApiError = {
   error?: string;
+};
+
+const isMessage = (value: unknown): value is Message => {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "id" in value &&
+    "room_id" in value &&
+    "user_id" in value &&
+    "username" in value &&
+    "text" in value &&
+    "created_at" in value
+  );
 };
 
 const API_BASE_URL = "http://localhost:3001";
@@ -65,6 +79,39 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [loading, setLoading] = useState(false);
+  const [socket, setSocket] = useState<Socket | null>(null);
+
+  useEffect(() => {
+    const newSocket = io("http://localhost:3001", {
+      withCredentials: true,
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!socket || !selectedRoom) {
+      return;
+    }
+    socket.emit("join_room", selectedRoom.id);
+  }, [socket, selectedRoom]);
+
+  useEffect(() => {
+    if (!socket) {
+      return;
+    }
+    socket.on("receive_message", (messageData) => {
+      setMessages((prev) => [...prev, messageData]);
+    });
+
+    return () => {
+      socket.off("receive_message");
+    };
+  }, [socket]);
 
   const clearStatus = () => {
     setStatusMessage("");
@@ -165,10 +212,13 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/rooms/${roomId}/messages`, {
-        method: "GET",
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/rooms/${roomId}/messages`,
+        {
+          method: "GET",
+          credentials: "include",
+        },
+      );
 
       if (!response.ok) {
         throw new Error("Failed to fetch messages");
@@ -208,12 +258,15 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
     setIsSendingMessage(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/rooms/${roomId}/messages`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: trimmedMessage }),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/rooms/${roomId}/messages`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: trimmedMessage }),
+        },
+      );
 
       if (!response.ok) {
         throw new Error("Failed to send message");
@@ -225,9 +278,19 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
         setErrorStatus(data.error);
         return;
       }
+      if (!isMessage(data)) {
+        throw new Error("Invalid Message response");
+      }
 
       setMessageText("");
-      await fetchMessages(roomId);
+      setMessages((prev) => [...prev, data ]);
+
+      if (socket) {
+        socket.emit("send_message", {
+          roomId,
+          ...data,
+        });
+      }
     } catch {
       setErrorStatus("Failed to send message");
     } finally {
@@ -266,7 +329,10 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
         </p>
       </div>
 
-      <form className="mt-5 flex flex-col gap-3 sm:flex-row" onSubmit={createRoom}>
+      <form
+        className="mt-5 flex flex-col gap-3 sm:flex-row"
+        onSubmit={createRoom}
+      >
         <input
           className="h-12 min-w-0 flex-1 rounded-md border border-[#cbd5e1] bg-[#f8fafc] px-3 text-[#111827] outline-none transition focus:border-[#0f766e] focus:bg-white focus:ring-2 focus:ring-[#99f6e4]"
           value={roomName}

@@ -4,6 +4,15 @@ import {AuthRequest,requireAuth} from '../middleware/auth'
 
 const router = Router();
 
+type MessageRow={
+  id:number;
+  room_id:number;
+  user_id:number;
+  username:string;
+  text:string;
+  created_at:string;
+}
+
 router.get("/:roomId/messages",(req:Request,res:Response)=>{
     const {roomId}=req.params;
 
@@ -36,20 +45,19 @@ router.post("/:roomId/messages",requireAuth,(req:AuthRequest,res:Response)=>{
         text
     );
 
-    res.status(201).json({
-        id:result.lastInsertRowid,
-        room_id:Number(roomId),
-        user_id:req.user?.id,
-        username:req.user?.username,
-        text
-    })
+    const message=db.prepare(
+      "SELECT id,room_id,user_id,username,text,created_at FROM messages WHERE id=?"
+    ).get(result.lastInsertRowid) as MessageRow | undefined
 
+    if(!message){
+      res.status(500).json({error:"Failed to load created message"})
+      return ;
+    }
 
-  }catch{
+    res.status(201).json(message)
+}catch{
     res.status(500).json({error:"Server Error"})
   }
-
-
 })
 
 export default router
