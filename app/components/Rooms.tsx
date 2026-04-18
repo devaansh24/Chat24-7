@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Socket, io } from "socket.io-client";
 
+// types
+
 type CurrentUser = {
   id: number;
   email: string;
