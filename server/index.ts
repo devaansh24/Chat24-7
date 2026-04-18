@@ -55,6 +55,12 @@ io.on("connection",(socket)=>{
     console.log(`Socket ${socket.id} joined room_${roomId}`)
   })
 
+
+  socket.on("typing",(data)=>{
+    const {roomId,username}=data;
+    socket.to(`room_${roomId}`).emit("user_typing",{username})
+  })
+
   socket.on("send_message",(messageData)=>{
     const {roomId}=messageData;
     socket.to(`room_${roomId}`).emit("receive_message",messageData)

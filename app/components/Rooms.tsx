@@ -81,6 +81,7 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
   const [loading, setLoading] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const [typingUser, setTypingUser] = useState("");
 
   useEffect(() => {
     const newSocket = io("http://localhost:3001", {
@@ -125,9 +126,17 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
         return [...prev, messageData];
       });
     });
+    socket.on("user_typing", (data) => {
+      setTypingUser(data.username);
+
+      setTimeout(() => {
+        setTypingUser("");
+      }, 2500);
+    });
 
     return () => {
       socket.off("receive_message");
+      socket.off("user_typing");
     };
   }, [socket]);
 
@@ -447,6 +456,8 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
               </span>
             </div>
 
+            
+
             <div className="mt-4 max-h-72 overflow-y-auto pr-1">
               {messages.length > 0 ? (
                 <>
@@ -481,6 +492,13 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
                 </p>
               )}
             </div>
+              <p className="mt-3 min-h-5 text-sm italic text-[#64748b]">
+           {
+            typingUser ? `${typingUser} is typing...` : ""
+           }
+              </p>
+          
+          
 
             <form
               className="mt-4 flex flex-col gap-3 border-t border-[#e2e8f0] pt-4 sm:flex-row"
@@ -494,7 +512,16 @@ export const ChatRooms = ({ currentUser }: ChatRoomProps) => {
             >
               <input
                 className="h-12 min-w-0 flex-1 rounded-md border border-[#cbd5e1] bg-white px-3 text-[#111827] outline-none transition focus:border-[#0f766e] focus:ring-2 focus:ring-[#99f6e4]"
-                onChange={(event) => setMessageText(event.target.value)}
+                onChange={(event) => {
+                  setMessageText(event.target.value);
+
+                  if (socket && selectedRoom && currentUser) {
+                    socket?.emit("typing", {
+                      roomId: selectedRoom.id,
+                      username: currentUser.username,
+                    });
+                  }
+                }}
                 placeholder={`Message ${selectedRoom.name}`}
                 value={messageText}
               />

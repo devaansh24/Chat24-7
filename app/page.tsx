@@ -2,7 +2,7 @@
 
 import { Register } from "./components/Register";
 import { LoginForm } from "./components/Login";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChatRooms } from "./components/Rooms";
 import Image from "next/image";
 
@@ -13,7 +13,25 @@ type CurrentUser = {
 };
 
 export default function Home() {
+
+  useEffect(()=>{
+      fetch("http://localhost:3001/api/auth/me",{
+        credentials:"include"
+      }).then((response)=>response.json())
+      .then((data)=>{
+        if(data.error){
+          setCurrentUser(null);
+          return
+        }
+        setCurrentUser(data)
+      }).catch(()=>{
+        setCurrentUser(null)
+      })
+  },[])
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+
+
+  
 
   return (
     <main className="min-h-screen bg-[#eef2f1] px-4 py-6 text-[#171717] sm:px-6 lg:px-10">
